@@ -1,20 +1,23 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import ReactWebChat from 'botframework-webchat';
 import axios from 'axios';
 
 function App() {
-  const directLine = useMemo(() => {
-    return window.WebChat.createDirectLine({
-     token: process.env.REACT_APP_BOT_SECRET
-    });
-  }, []);
+  const [directLine, setDirectLine] = useState(null);
 
   useEffect(() => {
-    // Örnek backend çağrısı
-    axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/health`)
-      .then(res => console.log('Backend sağlıklı:', res.data))
-      .catch(err => console.error('Backend bağlantı hatası:', err));
+    // Backend'den Direct Line token al
+    axios.get(`${process.env.REACT_APP_BACKEND_URL}/get_token`)
+      .then(res => {
+        const token = res.data.token;
+        setDirectLine(window.WebChat.createDirectLine({ token }));
+      })
+      .catch(err => console.error('Token alınamadı:', err));
   }, []);
+
+  if (!directLine) {
+    return <div>Yükleniyor...</div>;
+  }
 
   return (
     <div style={{ height: '100vh' }}>
@@ -24,3 +27,4 @@ function App() {
 }
 
 export default App;
+
