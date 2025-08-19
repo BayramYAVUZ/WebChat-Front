@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import ReactWebChat from 'botframework-webchat';
+import ReactWebChat, { createDirectLine } from 'botframework-webchat';
 import { FluentThemeProvider } from 'botframework-webchat-fluent-theme';
-import { createDirectLine } from 'botframework-webchat';
 
 function App() {
   const [directLine, setDirectLine] = useState(null);
