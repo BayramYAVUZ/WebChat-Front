@@ -1,41 +1,43 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
-import axios from 'axios';
+import React, { useEffect, useState } from 'react';
 import ReactWebChat, { createDirectLine } from 'botframework-webchat';
 import { FluentThemeProvider } from 'botframework-webchat-fluent-theme';
+import axios from 'axios';
+import './App.css';
 
-function App() {
+const App = () => {
   const [token, setToken] = useState(null);
-  const directLineRef = useRef(null);
+  const [directLine, setDirectLine] = useState(null);
+
+  const styleOptions = {
+    bubbleBorderRadius: 12,
+    bubbleFromUserBorderRadius: 12,
+    suggestedActionBorderRadius: 12,
+    hideUploadButton: false,
+    sendBoxBackground: '#ffffff',
+    sendBoxTextColor: '#000000',
+    backgroundColor: '#f3f2f1',
+  };
 
   useEffect(() => {
-    axios.get(`${process.env.REACT_APP_BACKEND_URL}/get_token`)
-      .then(res => {
-        const fetchedToken = res.data.token;
-        if (fetchedToken) {
-          console.log('Token alındı:', fetchedToken);
-          setToken(fetchedToken);
-        } else {
-          console.error('Token yanıtında token bulunamadı:', res.data);
-        }
-      })
-      .catch(err => {
+    const fetchToken = async () => {
+      try {
+        const response = await axios.post(
+          `${process.env.REACT_APP_BACKEND_URL}/get_token`
+        );
+        const fetchedToken = response.data.token;
+        setToken(fetchedToken);
+        const line = createDirectLine({ token: fetchedToken, webSocket: true });
+        setDirectLine(line);
+      } catch (err) {
         console.error('Token alınamadı:', err);
-      });
+      }
+    };
+
+    fetchToken();
   }, []);
 
-  const directLine = useMemo(() => {
-    if (token) {
-      directLineRef.current = createDirectLine({
-        token: token,
-        webSocket: true,
-      });
-      console.log('DirectLine oluşturuldu');
-      return directLineRef.current;
-    }
-  }, [token]);
-
   return (
-    <div style={{ height: '100vh', width: '100vw' }}>
+    <div className="webchat-container">
       {directLine ? (
         <FluentThemeProvider>
           <ReactWebChat
@@ -43,25 +45,14 @@ function App() {
             userID="user1"
             username="Bayram"
             locale="tr-TR"
-            styleOptions={{
-              bubbleBorderRadius: 15,
-              bubbleFromUserBorderRadius: 15,
-              suggestedActionBorderRadius: 15,
-              sendBoxBackground: '#ffffff',
-              sendBoxTextColor: '#000000',
-              sendBoxButtonColor: '#0078D4',
-              backgroundColor: '#f3f2f1',
-            }}
+            styleOptions={styleOptions}
           />
         </FluentThemeProvider>
       ) : (
-        <div style={{ textAlign: 'center', paddingTop: '2rem' }}>
-          Yükleniyor...
-        </div>
+        <div className="webchat-loading">Yükleniyor...</div>
       )}
     </div>
   );
-}
+};
 
 export default App;
-
