@@ -1,80 +1,56 @@
-import React, { useEffect, useState } from 'react';
-import ReactWebChat, { createDirectLine } from 'botframework-webchat';
-import { FluentThemeProvider } from 'botframework-webchat-fluent-theme';
-import axios from 'axios';
-import './App.css';
-import { CopilotKit } from '@copilotkit/react-core';
-import { CopilotChat } from '@copilotkit/react-ui';
+import React, { useState } from "react";
+import { CopilotSidebar } from "@copilotkit/react-ui";
+import { useMakeCopilotDocumentReadable } from "@copilotkit/react-core";
 
-const BACKEND_URL = "https://fastapi-bot-backend-943817890910.europe-west1.run.app";
+function App() {
+  const [input, setInput] = useState("");
+  const [streamedResponse, setStreamedResponse] = useState("");
 
-const App = () => {
-  const [token, setToken] = useState(null);
-  const [directLine, setDirectLine] = useState(null);
+  useMakeCopilotDocumentReadable({ "Latest Bot Response": streamedResponse });
 
-  const styleOptions = {
-    bubbleBorderRadius: 12,
-    bubbleFromUserBorderRadius: 12,
-    suggestedActionBorderRadius: 12,
-    hideUploadButton: false,
-    sendBoxBackground: '#ffffff',
-    sendBoxTextColor: '#000000',
-    backgroundColor: '#f3f2f1',
+  const handleSend = async () => {
+    setStreamedResponse("");
+
+    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ text: input }),
+    });
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value);
+      setStreamedResponse((prev) => prev + chunk);
+    }
   };
 
-  useEffect(() => {
-    const fetchToken = async () => {
-      try {
-        const response = await axios.get(`${BACKEND_URL}/get_token`);
-        const fetchedToken = response.data.token;
-        setToken(fetchedToken);
-
-        const line = createDirectLine({ token: fetchedToken, webSocket: true });
-        setDirectLine(line);
-      } catch (err) {
-        console.error('Token alınamadı:', err);
-      }
-    };
-
-    fetchToken();
-  }, []);
-
   return (
-    <div className="webchat-container">
-      {directLine ? ( //WebChat
-        <FluentThemeProvider>
-          <ReactWebChat
-            directLine={directLine}
-            userID="user1"
-            username="Bayram"
-            locale="tr-TR"
-            styleOptions={styleOptions}
-          />
-        </FluentThemeProvider>
-      ) : (
-        <div className="webchat-loading">Yükleniyor...</div>
-      )}
-
-      {token && ( // Copilot
-        <div style={{ marginTop: '2rem', borderTop: '1px solid #ddd', paddingTop: '1rem' }}>
-          <h3>CopilotKit Destekli Asistan</h3>
-          <CopilotKit
-            runtimeUrl={`${BACKEND_URL}/api/messages`}
-            token={token}
-            headers={{ Authorization: `Bearer ${token}` }}
-          >
-            <CopilotChat
-              placeholder="Copilot'a bir şey sor..."
-              labels={{ assistant: 'Bot', user: 'Sen' }}
-              autoFocus={false}
-              style={{ minHeight: 150 }}
-            />
-          </CopilotKit>
+    <CopilotSidebar>
+      <div style={{ padding: "2rem" }}>
+        <h1>CopilotKit Chat</h1>
+        <textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Mesaj yaz..."
+          rows={3}
+          style={{ width: "100%", padding: "10px" }}
+        />
+        <button onClick={handleSend} style={{ marginTop: "1rem" }}>
+          Gönder
+        </button>
+        <div style={{ marginTop: "2rem", whiteSpace: "pre-wrap" }}>
+          <strong>Yanıt:</strong>
+          <p>{streamedResponse}</p>
         </div>
-      )}
-    </div>
+      </div>
+    </CopilotSidebar>
   );
-};
+}
 
 export default App;
-
